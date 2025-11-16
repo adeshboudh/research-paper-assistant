@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api import rag, graph, conversation, ingest, memory
 from .core.database import connect_databases, close_databases, neo4j_conn, redis_conn
 from .core.config import settings
+from .services.embedding_service import embedding_service
+from .services.vector_service import vector_service
+from .services.graph_service import graph_service
 import logging
 
 # Configure logging
@@ -28,13 +31,27 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting Research Paper Assistant API...")
+
+    # Connect databases
     connect_databases()
+
+    # Load embedding model
+    embedding_service.load_model()
+
+    # Initialize FAISS index
+    vector_service.initialize_index()
+
     logger.info("All services initialized")
 
 # Shutdown event: Close connections
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down...")
+
+    # Persist FAISS index
+    vector_service.persist()
+
+    # Close database connections
     close_databases()
 
 # Include all routers
@@ -58,6 +75,10 @@ def health_check():
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
-        "neo4j": "connected" if neo4j_conn.driver else "disconnected",
-        "redis": "connected" if redis_conn.client else "disconnected"
+        "services": {
+            "neo4j": "connected" if neo4j_conn.driver else "disconnected",
+            "redis": "connected" if redis_conn.client else "disconnected",
+            "faiss": vector_service.get_stats(),
+            "graph": graph_service.get_graph_stats()
+        }
     }
