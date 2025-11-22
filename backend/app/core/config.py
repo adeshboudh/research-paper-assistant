@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # FAISS Configuration
     FAISS_INDEX_PATH: str = "/data/faiss_index"
-    FAISS_DIMENSION: int = 768  # sentence-transformers dimension
+    FAISS_DIMENSION: int = 384  # sentence-transformers dimension
 
     # Embedding Model
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

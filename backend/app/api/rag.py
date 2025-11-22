@@ -1,6 +1,8 @@
+import requests
 from fastapi import APIRouter, HTTPException
 from ..models.query import RagRequest, RagResponse, SourceInfo
-import uuid
+from ..services.vector_service import vector_service
+from ..services.llm_service import llm_service
 
 router = APIRouter(tags=["RAG"])
 
@@ -17,19 +19,35 @@ async def rag_query(request: RagRequest):
     4. Call Gemini/OpenRouter LLM
     5. Return answer with source citations
     """
-    # TODO: Implement actual RAG logic (next step)
-    # Placeholder response
-    session_id = request.session_id or str(uuid.uuid4())
+    if not request.question or len(request.question) < 3:
+        raise HTTPException(status_code=400, detail="Question is required.")
+
+    # 1. Retrieve top-k most relevant chunks
+    results = vector_service.search(request.question, top_k=request.top_k)
+
+    if not results:
+        return RagResponse(
+            answer="Sorry, no relevant research content was found for your question.",
+            sources=[],
+            session_id=request.session_id or "N/A"
+        )
+
+    # 2. Build standardized source data for response
+    sources = [
+        SourceInfo(
+            paper_id=r.get("paper_id", "unknown"),
+            title=r.get("title", "Research Paper"),
+            snippet=r.get("text", ""),
+            page=r.get("page"),
+            relevance_score=round(r.get("relevance_score", 0.0), 3)
+        ) for r in results
+    ]
+
+    # 3. Generate answer with LLM (Gemini)
+    answer = llm_service.generate_rag_answer(request.question, results)
 
     return RagResponse(
-        answer="This is a placeholder RAG answer. Implement embedding + FAISS + LLM.",
-        sources=[
-            SourceInfo(
-                paper_id="paper_001",
-                title="Sample Paper",
-                snippet="This is a sample text chunk...",
-                relevance_score=0.95
-            )
-        ],
-        session_id=session_id
+        answer=answer,
+        sources=sources,
+        session_id=request.session_id or "N/A"
     )

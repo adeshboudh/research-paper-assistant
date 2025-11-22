@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import rag, graph, conversation, ingest, memory
+from .api import rag, graph, conversation, ingest, memory, test_data
 from .core.database import connect_databases, close_databases, neo4j_conn, redis_conn
 from .core.config import settings
 from .services.embedding_service import embedding_service
 from .services.vector_service import vector_service
 from .services.graph_service import graph_service
+from .services.llm_service import llm_service
 import logging
 
 # Configure logging
@@ -41,6 +42,9 @@ async def startup_event():
     # Initialize FAISS index
     vector_service.initialize_index()
 
+    # Configure LLM service
+    llm_service.configure()
+
     logger.info("All services initialized")
 
 # Shutdown event: Close connections
@@ -60,6 +64,7 @@ app.include_router(graph.router, prefix="/api", tags=["GraphRAG"])
 app.include_router(conversation.router, prefix="/api", tags=["Conversation"])
 app.include_router(ingest.router, prefix="/api", tags=["Ingestion"])
 app.include_router(memory.router, prefix="/api", tags=["Memory"])
+app.include_router(test_data.router, prefix="/api")
 
 @app.get("/")
 def root():
@@ -79,6 +84,7 @@ def health_check():
             "neo4j": "connected" if neo4j_conn.driver else "disconnected",
             "redis": "connected" if redis_conn.client else "disconnected",
             "faiss": vector_service.get_stats(),
-            "graph": graph_service.get_graph_stats()
+            "graph": graph_service.get_graph_stats(),
+            "llm": "configured" if llm_service.configured else "not_configured"
         }
     }
