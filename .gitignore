@@ -231,3 +231,17 @@ data/faiss_index/
 data/papers/
 *.pkl
 *.index
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env.local
+frontend/.env*.local
+frontend/package-lock.json
+
+# Keep these patterns from before
+__pycache__/
+*.pyc
+.env
